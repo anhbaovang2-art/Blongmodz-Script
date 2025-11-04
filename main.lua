@@ -1,10 +1,12 @@
 -- =========================================================
--- BlongModz Rayfield (Fixed theme & fix-lag behavior)
--- Giữ nguyên hầu hết code gốc; chỉ sửa theme và phần Fix Lag/UltraFPS safe
+-- BlongModz Rayfield Full Script (Fixed Theme & Fix-Lag)
+-- Giữ nguyên chức năng gốc + thêm nút yquangtg & Fake mui goku
+-- Rayfield source: https://sirius.menu/rayfield
 -- =========================================================
 
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
+-- Themes
 local themes = {
     ["BlongModz Dark"] = {
         Name = "BlongModz Dark",
@@ -53,15 +55,14 @@ local themes = {
     }
 }
 
--- >>> FIX: define selectedTheme BEFORE BuildUI (để tránh nil khi tham chiếu)
-local selectedTheme = themes["BlongModz Dark"] -- default theme
+-- define default theme before BuildUI
+local selectedTheme = themes["BlongModz Dark"]
 
 local Window, MainTab, FixLagTab, SettingTab
 
--- Safe ApplyTheme: thử Rayfield:SetupTheme nếu có, nếu không thì cố gắng chỉnh UI root
+-- Safe ApplyTheme: try SetupTheme, fallback modify Rayfield.UI
 local function ApplyTheme(theme)
     if not theme then return end
-    -- try built-in setup first
     pcall(function()
         if Rayfield.SetupTheme then
             Rayfield:SetupTheme(theme)
@@ -69,22 +70,19 @@ local function ApplyTheme(theme)
         end
     end)
 
-    -- fallback: try to change Rayfield.UI properties (nếu tồn tại)
     pcall(function()
         if Rayfield.UI then
             local ui = Rayfield.UI
-            -- set some common fields if present
-            if ui.BackgroundColor3 ~= nil then
+            if rawget(ui, "BackgroundColor3") ~= nil then
                 ui.BackgroundColor3 = theme.Background
             end
-            -- traverse children for typical names and set some colors
             for _, v in pairs(ui:GetDescendants()) do
                 pcall(function()
                     if (v:IsA("Frame") or v:IsA("ImageLabel") or v:IsA("ImageButton")) and (v.Name:lower():match("main") or v.Name:lower():match("window") or v.Name:lower():match("background") or v.Name:lower():match("container")) then
                         v.BackgroundColor3 = theme.Window or theme.Background
                     end
                     if v:IsA("TextLabel") or v:IsA("TextButton") then
-                        v.TextColor3 = theme.FontColor or Color3.new(1,1,1)
+                        v.TextColor3 = theme.FontColor or Color3.fromRGB(255,255,255)
                     end
                 end)
             end
@@ -92,7 +90,7 @@ local function ApplyTheme(theme)
     end)
 end
 
--- Save original lighting settings to restore later (used by UltraFPS toggle)
+-- Save/restore lighting (used by Fix Lag UltraFPS)
 local savedLighting = {}
 local function saveLightingState()
     local lighting = game:GetService("Lighting")
@@ -108,32 +106,19 @@ local function saveLightingState()
 end
 local function restoreLightingState()
     local lighting = game:GetService("Lighting")
-    if savedLighting.GlobalShadows ~= nil then
-        pcall(function() lighting.GlobalShadows = savedLighting.GlobalShadows end)
-    end
-    if savedLighting.FogEnd ~= nil then
-        pcall(function() lighting.FogEnd = savedLighting.FogEnd end)
-    end
-    if savedLighting.Ambient ~= nil then
-        pcall(function() lighting.Ambient = savedLighting.Ambient end)
-    end
-    if savedLighting.OutdoorAmbient ~= nil then
-        pcall(function() lighting.OutdoorAmbient = savedLighting.OutdoorAmbient end)
-    end
-    if savedLighting.Brightness ~= nil then
-        pcall(function() lighting.Brightness = savedLighting.Brightness end)
-    end
-    if savedLighting.ClockTime ~= nil then
-        pcall(function() lighting.ClockTime = savedLighting.ClockTime end)
-    end
-    if savedLighting.Technology ~= nil then
-        pcall(function() lighting.Technology = savedLighting.Technology end)
-    end
+    pcall(function()
+        if savedLighting.GlobalShadows ~= nil then lighting.GlobalShadows = savedLighting.GlobalShadows end
+        if savedLighting.FogEnd ~= nil then lighting.FogEnd = savedLighting.FogEnd end
+        if savedLighting.Ambient ~= nil then lighting.Ambient = savedLighting.Ambient end
+        if savedLighting.OutdoorAmbient ~= nil then lighting.OutdoorAmbient = savedLighting.OutdoorAmbient end
+        if savedLighting.Brightness ~= nil then lighting.Brightness = savedLighting.Brightness end
+        if savedLighting.ClockTime ~= nil then lighting.ClockTime = savedLighting.ClockTime end
+        if savedLighting.Technology ~= nil then lighting.Technology = savedLighting.Technology end
+    end)
 end
 
--- Build UI (main)
+-- Build UI
 local function BuildUI()
-    -- NOTE: removed Theme = selectedTheme here (was causing nil / unsupported)
     Window = Rayfield:CreateWindow({
         Name = "BlongModz",
         LoadingTitle = "Đang tải script...",
@@ -145,18 +130,20 @@ local function BuildUI()
         },
     })
 
-    -- Áp dụng theme một cách an toàn sau khi window được tạo
+    -- Apply theme safely after window created
     ApplyTheme(selectedTheme)
 
     MainTab = Window:CreateTab("Chức năng chính")
     FixLagTab = Window:CreateTab("Fix Lag")
     SettingTab = Window:CreateTab("Cài đặt")
 
-    -- Các nút loadstring sau
+    -- Các nút loadstring sau (giữ nguyên của bạn)
     MainTab:CreateButton({
         Name = "Bật Voidware Script",
         Callback = function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/nightsintheforest.lua", true))()
+            pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/nightsintheforest.lua", true))()
+            end)
             Rayfield:Notify({Title = "Voidware", Content = "Đã bật script Voidware!", Duration = 3})
         end
     })
@@ -164,17 +151,57 @@ local function BuildUI()
     MainTab:CreateButton({
         Name = "Bật Infinite Health (Bất tử)",
         Callback = function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/ProBaconHub/DATABASE/refs/heads/main/99%20Nights%20in%20the%20Forest/Infinite%20Health.lua"))()
+            pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/ProBaconHub/DATABASE/refs/heads/main/99%20Nights%20in%20the%20Forest/Infinite%20Health.lua"))()
+            end)
             Rayfield:Notify({Title = "Bất tử", Content = "Đã bật Infinite Health!", Duration = 3})
         end
     })
 
-    MainTab:CreateButton({Name = "Bật FPS Flick", Callback = function() loadstring(game:HttpGet("https://pastebin.com/raw/MzugyTz9"))() end})
-    MainTab:CreateButton({Name = "Bật EvadeEvent (Farm kẹo)", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/gumanba/Scripts/main/EvadeEvent"))() end})
-    MainTab:CreateButton({Name = "Bật Quantum Blox Fruit", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))() end})
-    MainTab:CreateButton({Name = "Bật Fake Dash TSB", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Cyborg883/FakeDash/refs/heads/main/Protected_5833389828844912.lua"))() end})
-    MainTab:CreateButton({Name = "Bật Fake Emote TSB", Callback = function() loadstring(game:HttpGet("https://rawscripts.net/raw/The-Strongest-Battlegrounds-Gojo-tsb-script-WORKS-ON-SOLARA-18641"))() end})
-    MainTab:CreateButton({Name = "Bật Bloxstrap", Callback = function() getgenv().autosetup = { path = 'Bloxstrap', setup = true } loadstring(game:HttpGet('https://raw.githubusercontent.com/qwertyui-is-back/Bloxstrap/main/Initiate.lua'), 'lol')() end})
+    MainTab:CreateButton({Name = "Bật FPS Flick", Callback = function() pcall(function() loadstring(game:HttpGet("https://pastebin.com/raw/MzugyTz9"))() end) end})
+    MainTab:CreateButton({Name = "Bật EvadeEvent (Farm kẹo)", Callback = function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/gumanba/Scripts/main/EvadeEvent"))() end) end})
+    MainTab:CreateButton({Name = "Bật Quantum Blox Fruit", Callback = function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))() end) end})
+    MainTab:CreateButton({Name = "Bật Fake Dash TSB", Callback = function() pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Cyborg883/FakeDash/refs/heads/main/Protected_5833389828844912.lua"))() end) end})
+    MainTab:CreateButton({Name = "Bật Fake Emote TSB", Callback = function() pcall(function() loadstring(game:HttpGet("https://rawscripts.net/raw/The-Strongest-Battlegrounds-Gojo-tsb-script-WORKS-ON-SOLARA-18641"))() end) end})
+    MainTab:CreateButton({Name = "Bật Bloxstrap", Callback = function() pcall(function() getgenv().autosetup = { path = 'Bloxstrap', setup = true } loadstring(game:HttpGet('https://raw.githubusercontent.com/qwertyui-is-back/Bloxstrap/main/Initiate.lua'), 'lol')() end) end})
+
+    -- NEW: yquangtg button
+    MainTab:CreateButton({
+        Name = "yquangtg",
+        Callback = function()
+            local ok, err = pcall(function()
+                local url = "https://raw.githubusercontent.com/yqantg-pixel/Find/refs/heads/main/Protected_3334988263341522.lua.txt"
+                local src = game:HttpGet(url, true)
+                local fn, compileErr = loadstring(src)
+                if not fn then error(compileErr) end
+                fn()
+            end)
+            if ok then
+                pcall(function() Rayfield:Notify({Title = "yquangtg", Content = "Đã bật script yquangtg!", Duration = 3}) end)
+            else
+                pcall(function() Rayfield:Notify({Title = "yquangtg", Content = "Lỗi khi tải/chạy: "..tostring(err), Duration = 4}) end)
+            end
+        end
+    })
+
+    -- NEW: Fake mui goku button
+    MainTab:CreateButton({
+        Name = "Fake mui goku",
+        Callback = function()
+            local ok, err = pcall(function()
+                local url = "https://raw.githubusercontent.com/IdkRandomUsernameok/PublicAssets/refs/heads/main/Releases/MUI.lua"
+                local src = game:HttpGet(url, true)
+                local fn, compileErr = loadstring(src)
+                if not fn then error(compileErr) end
+                fn()
+            end)
+            if ok then
+                pcall(function() Rayfield:Notify({Title = "Fake MUI Goku", Content = "Đã bật Fake mui goku!", Duration = 3}) end)
+            else
+                pcall(function() Rayfield:Notify({Title = "Fake MUI Goku", Content = "Lỗi khi tải/chạy: "..tostring(err), Duration = 4}) end)
+            end
+        end
+    })
 
     MainTab:CreateToggle({
         Name = "Noclip (Không xuyên tường)",
@@ -185,9 +212,7 @@ local function BuildUI()
             local RunService = game:GetService("RunService")
             local plr = game.Players.LocalPlayer
 
-            -- Lưu reference event để tránh đăng nhiều kết nối
             if noclip then
-                -- create connection once
                 if not _G.__blong_noclip_conn then
                     _G.__blong_noclip_conn = RunService.Stepped:Connect(function()
                         local chr = plr.Character
@@ -205,12 +230,10 @@ local function BuildUI()
                     end)
                 end
             else
-                -- disconnect if exists
                 if _G.__blong_noclip_conn then
                     pcall(function() _G.__blong_noclip_conn:Disconnect() end)
                     _G.__blong_noclip_conn = nil
                 end
-                -- ensure collide true
                 local chr = plr.Character
                 if chr and chr:FindFirstChild("HumanoidRootPart") then
                     chr.HumanoidRootPart.CanCollide = true
@@ -222,7 +245,7 @@ local function BuildUI()
     MainTab:CreateButton({
         Name = "Bật Fly GUI",
         Callback = function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))()
+            pcall(function() loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))() end)
         end
     })
 
@@ -263,15 +286,13 @@ local function BuildUI()
         CurrentValue = false,
         Flag = "AntiVoidToggle",
         Callback = function(state)
-            antiVoid = state
-            local plr = game.Players.LocalPlayer
-            -- disconnect previous if any
             if _G.__blong_antivoid_conn then
                 pcall(function() _G.__blong_antivoid_conn:Disconnect() end)
                 _G.__blong_antivoid_conn = nil
             end
             if state then
                 _G.__blong_antivoid_conn = game:GetService("RunService").Heartbeat:Connect(function()
+                    local plr = game.Players.LocalPlayer
                     local chr = plr.Character
                     local hrp = chr and chr:FindFirstChild("HumanoidRootPart")
                     if hrp and hrp.Position.Y < -10 then
@@ -288,11 +309,10 @@ local function BuildUI()
         Name = "Giảm Lag v1 (-100 Độ họa)",
         Callback = function()
             local lighting = game:GetService("Lighting")
-            saveLightingState() -- save before change
+            saveLightingState()
             pcall(function()
                 lighting.GlobalShadows = false
                 lighting.FogEnd = -100
-                Notify = Rayfield.Notify
             end)
             Rayfield:Notify({Title = "Giảm Lag", Content = "Bật giảm lag v1 (-100 độ họa)", Duration = 3})
         end
@@ -335,10 +355,7 @@ local function BuildUI()
                     sky = Instance.new("Sky")
                     sky.Parent = lighting
                 end
-                -- set sky colors to gray-ish values
-                pcall(function()
-                    sky.StarColor = Color3.new(0.5,0.5,0.5)
-                end)
+                pcall(function() sky.StarColor = Color3.new(0.5,0.5,0.5) end)
 
                 for _, part in pairs(workspace:GetDescendants()) do
                     if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
@@ -375,18 +392,11 @@ local function BuildUI()
                 pcall(function()
                     lighting.GlobalShadows = false
                     lighting.FogEnd = -999999999999
-                    -- lower details across workspace parts safely
                     for _, part in pairs(workspace:GetDescendants()) do
                         if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                             pcall(function()
                                 part.Material = Enum.Material.SmoothPlastic
-                                if part:FindFirstChildWhichIsA("Decal") then
-                                    for _,d in pairs(part:GetDescendants()) do
-                                        if d:IsA("Decal") then d.Transparency = 1 end
-                                    end
-                                end
                                 part.Reflectance = 0
-                                -- set moderate transparency to reduce render cost (but not break)
                                 part.Transparency = 0.3
                             end)
                         end
@@ -394,7 +404,6 @@ local function BuildUI()
                 end)
                 Rayfield:Notify({Title = "FPS Boost", Content = "Bật tăng FPS cùng giảm đồ họa cực mạnh!", Duration = 3})
             else
-                -- restore lighting and try to restore parts
                 restoreLightingState()
                 pcall(function()
                     for _, part in pairs(workspace:GetDescendants()) do
@@ -412,7 +421,7 @@ local function BuildUI()
         end
     })
 
-    -- Hiện FPS 7 màu (giữ nguyên)
+    -- Hiện FPS 7 màu
     do
         local fpsLabel = Instance.new("TextLabel")
         fpsLabel.Size = UDim2.new(0, 100, 0, 30)
@@ -421,7 +430,6 @@ local function BuildUI()
         fpsLabel.TextSize = 24
         fpsLabel.Font = Enum.Font.SourceSansBold
         fpsLabel.Text = "FPS: 0"
-        -- safe parent: nếu CoreGui RobloxGui tồn tại thì gán, nếu không, gán vào CoreGui
         local coreGui = game:GetService("CoreGui")
         local ok, robloxGui = pcall(function() return coreGui:FindFirstChild("RobloxGui") end)
         if ok and robloxGui then
@@ -478,13 +486,12 @@ local function BuildUI()
         Callback = function(option)
             if themes[option] then
                 selectedTheme = themes[option]
-                -- Thay vì destroy toàn bộ GUI (có thể gây lỗi), chỉ apply theme
-                ApplyTheme(selectedTheme)
+                ApplyTheme(selectedTheme) -- apply directly without destroying window
                 Rayfield:Notify({Title = "Theme", Content = "Đã đổi sang theme " .. option, Duration = 2})
             end
         end
     })
 end
 
--- Build UI lần đầu
+-- init
 BuildUI()
